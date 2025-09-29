@@ -1,0 +1,250 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Interactive Form Validation — Advanced (Phase 4)</title>
+
+  <!-- Embedded CSS -->
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      margin: 0;
+      padding: 0;
+      background: #f7f7f7;
+      color: #333;
+    }
+    .app {
+      max-width: 600px;
+      margin: auto;
+      padding: 20px;
+      background: #fff;
+      border-radius: 8px;
+      box-shadow: 0 0 10px rgba(0,0,0,0.1);
+    }
+    .header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 20px;
+    }
+    .progress-wrap {
+      width: 100%;
+      background: #ddd;
+      height: 8px;
+      border-radius: 4px;
+      margin-bottom: 20px;
+    }
+    .progress-bar {
+      height: 8px;
+      background: #4caf50;
+      border-radius: 4px;
+      width: 0%;
+      transition: width 0.3s ease;
+    }
+    .form-row {
+      margin-bottom: 15px;
+    }
+    .form-row label {
+      display: block;
+      margin-bottom: 5px;
+    }
+    input, button {
+      width: 100%;
+      padding: 10px;
+      border: 1px solid #ccc;
+      border-radius: 4px;
+      box-sizing: border-box;
+    }
+    button {
+      background: #4caf50;
+      color: white;
+      font-weight: bold;
+      cursor: pointer;
+      border: none;
+    }
+    button:disabled {
+      background: #aaa;
+      cursor: not-allowed;
+    }
+    .error-message {
+      font-size: 0.9em;
+      color: red;
+      margin-top: 4px;
+    }
+    .hint {
+      font-size: 0.85em;
+      color: #555;
+    }
+    .password-strength {
+      margin-top: 6px;
+    }
+    .meter {
+      width: 100%;
+      height: 6px;
+      background: #ddd;
+      border-radius: 3px;
+      margin-bottom: 6px;
+    }
+    .meter span {
+      display: block;
+      height: 100%;
+      border-radius: 3px;
+      background: red;
+      transition: width 0.3s;
+    }
+    footer {
+      text-align: center;
+      margin-top: 20px;
+      font-size: 0.8em;
+      color: #666;
+    }
+    /* Dark mode */
+    body.dark {
+      background: #222;
+      color: #eee;
+    }
+    body.dark .app {
+      background: #333;
+    }
+  </style>
+</head>
+<body>
+  <div class="app" id="app">
+    <header class="header">
+      <h1>Register</h1>
+      <div class="header-controls">
+        <button id="themeToggle" aria-pressed="false" title="Toggle dark/light">🌓</button>
+      </div>
+    </header>
+
+    <main>
+      <form id="registrationForm" novalidate>
+        <div class="progress-wrap">
+          <div id="progressBar" class="progress-bar"></div>
+        </div>
+
+        <div class="form-row">
+          <label for="username">Username *</label>
+          <input id="username" name="username" type="text" required />
+          <div id="username-err" class="error-message"></div>
+        </div>
+
+        <div class="form-row">
+          <label for="fullName">Full Name *</label>
+          <input id="fullName" name="fullName" type="text" required />
+          <div id="fullname-err" class="error-message"></div>
+        </div>
+
+        <div class="form-row">
+          <label for="email">Email *</label>
+          <input id="email" name="email" type="email" required />
+          <div id="email-err" class="error-message"></div>
+        </div>
+
+        <div class="form-row">
+          <label for="phone">Phone *</label>
+          <input id="phone" name="phone" type="tel" required />
+          <div id="phone-err" class="error-message"></div>
+        </div>
+
+        <div class="form-row">
+          <label for="password">Password *</label>
+          <input id="password" name="password" type="password" required />
+          <div class="password-strength">
+            <div class="meter"><span id="meterFill"></span></div>
+            <p id="strength-text">Strength: <strong id="strengthValue">None</strong></p>
+          </div>
+        </div>
+
+        <div class="form-row">
+          <label for="confirmPassword">Confirm Password *</label>
+          <input id="confirmPassword" name="confirmPassword" type="password" required />
+          <div id="confirmPassword-err" class="error-message"></div>
+        </div>
+
+        <div class="form-row">
+          <label><input id="terms" type="checkbox" required /> I agree to terms *</label>
+          <div id="terms-err" class="error-message"></div>
+        </div>
+
+        <div class="form-row">
+          <button id="submitBtn" type="submit" disabled>Register</button>
+        </div>
+      </form>
+    </main>
+
+    <footer>
+      <small>Built with progressive UX for Phase 4.</small>
+    </footer>
+  </div>
+
+  <!-- Embedded JavaScript -->
+  <script>
+    const form = document.getElementById("registrationForm");
+    const progressBar = document.getElementById("progressBar");
+    const password = document.getElementById("password");
+    const confirmPassword = document.getElementById("confirmPassword");
+    const submitBtn = document.getElementById("submitBtn");
+    const strengthValue = document.getElementById("strengthValue");
+    const meterFill = document.getElementById("meterFill");
+    const themeToggle = document.getElementById("themeToggle");
+
+    function updateProgress() {
+      const inputs = form.querySelectorAll("input[required]");
+      let filled = 0;
+      inputs.forEach(input => {
+        if (input.type === "checkbox" ? input.checked : input.value.trim() !== "") {
+          filled++;
+        }
+      });
+      const percent = (filled / inputs.length) * 100;
+      progressBar.style.width = percent + "%";
+      progressBar.setAttribute("aria-valuenow", percent);
+      submitBtn.disabled = filled < inputs.length;
+    }
+
+    function checkPasswordStrength(pwd) {
+      let score = 0;
+      if (pwd.length >= 8) score++;
+      if (/[A-Z]/.test(pwd)) score++;
+      if (/[a-z]/.test(pwd)) score++;
+      if (/[0-9]/.test(pwd)) score++;
+      if (/[^A-Za-z0-9]/.test(pwd)) score++;
+      return score;
+    }
+
+    password.addEventListener("input", () => {
+      const score = checkPasswordStrength(password.value);
+      const levels = ["None","Weak","Fair","Good","Strong","Very Strong"];
+      strengthValue.textContent = levels[score];
+      const colors = ["#ccc","red","orange","yellow","blue","green"];
+      meterFill.style.width = (score*20) + "%";
+      meterFill.style.background = colors[score];
+      updateProgress();
+    });
+
+    confirmPassword.addEventListener("input", () => {
+      const err = document.getElementById("confirmPassword-err");
+      if (confirmPassword.value !== password.value) {
+        err.textContent = "Passwords do not match!";
+      } else {
+        err.textContent = "";
+      }
+      updateProgress();
+    });
+
+    form.addEventListener("input", updateProgress);
+
+    form.addEventListener("submit", (e) => {
+      e.preventDefault();
+      alert("Form submitted successfully!");
+    });
+
+    themeToggle.addEventListener("click", () => {
+      document.body.classList.toggle("dark");
+    });
+  </script>
+</body>
+</html>
